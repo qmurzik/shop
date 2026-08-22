@@ -1,0 +1,8 @@
+{
+	"name": "heart-of-two-moons",
+	"compatibility_date": "2025-06-05",
+	"assets": {
+		"directory": "./site",
+		"not_found_handling": "single-page-application"
+	}
+}

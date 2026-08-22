@@ -4,7 +4,12 @@
   "description": "Романтическая веб-RPG «Сердце Двух Лун» — визуальная новелла с выбором, отношениями и несколькими концовками.",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "deploy": "wrangler deploy",
+    "cf:dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
   },
   "engines": {
     "node": ">=14"
