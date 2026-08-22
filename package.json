@@ -1,0 +1,12 @@
+{
+  "name": "heart-of-two-moons",
+  "version": "1.0.0",
+  "description": "Романтическая веб-RPG «Сердце Двух Лун» — визуальная новелла с выбором, отношениями и несколькими концовками.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}

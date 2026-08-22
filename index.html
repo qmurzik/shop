@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a1330">
+<meta name="description" content="«Сердце Двух Лун» — романтическая веб-RPG с сюжетом, отношениями и несколькими концовками.">
+<title>Сердце Двух Лун — романтическая веб-RPG</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%9E%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="starfield" aria-hidden="true"></canvas>
+
+  <!-- START SCREEN -->
+  <section id="screen-start" class="screen active" aria-label="Главное меню">
+    <div class="start-card">
+      <div class="game-emblem" aria-hidden="true">🌙💞🌙</div>
+      <h1 class="game-title">Сердце Двух Лун</h1>
+      <p class="game-subtitle">Романтическая история о выборе, доверии и старой магии города Лунхейвен</p>
+      <nav class="menu-buttons">
+        <button id="btn-continue" class="btn btn-primary" hidden type="button">Продолжить</button>
+        <button id="btn-new-game" class="btn btn-primary" type="button">Новая игра</button>
+        <button id="btn-load" class="btn" type="button">Загрузить игру</button>
+        <button id="btn-gallery" class="btn" type="button">Галерея воспоминаний</button>
+        <button id="btn-settings" class="btn" type="button">Настройки</button>
+        <button id="btn-about" class="btn" type="button">Об игре</button>
+      </nav>
+      <p class="start-footer">Сохранения хранятся локально в вашем браузере</p>
+    </div>
+  </section>
+
+  <!-- NEW GAME SCREEN -->
+  <section id="screen-newgame" class="screen" aria-label="Создание персонажа">
+    <div class="newgame-card">
+      <h2>Начало пути</h2>
+      <label class="field-label" for="input-name">Как вас называть в этой истории?</label>
+      <input id="input-name" class="text-input" type="text" maxlength="18" placeholder="Например, Мира" autocomplete="off">
+
+      <p class="field-label">Почему вы приехали в Лунхейвен?</p>
+      <div id="origin-choices" class="origin-choices" role="radiogroup" aria-label="Причина приезда"></div>
+
+      <div class="newgame-actions">
+        <button id="btn-back-start" class="btn" type="button">Назад</button>
+        <button id="btn-start-story" class="btn btn-primary" type="button">Начать историю</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section id="screen-game" class="screen" aria-label="Игра">
+    <header class="game-topbar">
+      <button id="btn-menu" class="icon-btn" type="button" aria-label="Открыть меню">☰</button>
+      <div class="chapter-indicator">
+        <span id="chapter-title">Пролог</span>
+      </div>
+      <div class="hearts-row" id="hearts-row" aria-label="Отношения"></div>
+    </header>
+
+    <div class="scene-stage" id="scene-stage">
+      <div class="scene-glow" aria-hidden="true"></div>
+      <div class="portraits" id="portraits"></div>
+    </div>
+
+    <div class="dialogue-box" id="dialogue-box">
+      <div class="speaker-name" id="speaker-name"></div>
+      <div class="dialogue-text" id="dialogue-text"></div>
+      <div class="choices" id="choices"></div>
+      <button id="btn-continue-scene" class="btn btn-continue" hidden type="button">Далее ▸</button>
+    </div>
+  </section>
+
+  <!-- ENDING SCREEN -->
+  <section id="screen-ending" class="screen" aria-label="Финал">
+    <div class="ending-card">
+      <div class="ending-emblem" id="ending-emblem" aria-hidden="true">🌙</div>
+      <h2 id="ending-title">Конец главы</h2>
+      <div id="ending-text" class="ending-text"></div>
+      <div id="ending-stats" class="ending-stats"></div>
+      <div class="ending-actions">
+        <button id="btn-ending-gallery" class="btn" type="button">Галерея воспоминаний</button>
+        <button id="btn-ending-newgame" class="btn btn-primary" type="button">Новая игра+</button>
+        <button id="btn-ending-menu" class="btn" type="button">Главное меню</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GENERIC MODAL -->
+  <div id="modal-backdrop" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <header class="modal-header">
+        <button id="modal-back" class="icon-btn" type="button" aria-label="Назад" hidden>‹</button>
+        <h2 id="modal-title">Меню</h2>
+        <button id="modal-close" class="icon-btn" type="button" aria-label="Закрыть">✕</button>
+      </header>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
