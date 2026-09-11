@@ -59,6 +59,16 @@ public final class Config {
     public int rejoinDelayMs = 1000;
     public boolean localKiraSkin = true;
     public boolean localQModsCape = true;
+    public boolean bedBreakBanner = true;
+    public boolean finalKillBanner = true;
+
+    public boolean pingHud = true;
+    public boolean cpsHud = false;
+    public boolean coordsHud = false;
+    public boolean hitParticles = true;
+    public boolean hitMarker = true;
+    public boolean damageIndicator = true;
+
     public final String[] bindText = new String[8];
     public final int[] bindKeys = new int[8];
 
@@ -118,6 +128,16 @@ public final class Config {
         rejoinDelayMs = integer("mineblaze", "rejoin_delay_ms", rejoinDelayMs, 500, 3000);
         localKiraSkin = bool("cosmetics", "kira_skin", localKiraSkin);
         localQModsCape = bool("cosmetics", "qmods_cape", localQModsCape);
+        bedBreakBanner = bool("mineblaze", "bed_break_banner", bedBreakBanner);
+        finalKillBanner = bool("mineblaze", "final_kill_banner", finalKillBanner);
+
+        pingHud = bool("combat", "ping_hud", pingHud);
+        cpsHud = bool("combat", "cps_hud", cpsHud);
+        coordsHud = bool("combat", "coords_hud", coordsHud);
+        hitParticles = bool("combat", "hit_particles", hitParticles);
+        hitMarker = bool("combat", "hit_marker", hitMarker);
+        damageIndicator = bool("combat", "damage_indicator", damageIndicator);
+
         int schema = integer("general", "schema_version", 0, 0, 99);
         if (schema < 2) quickShopKeys = true;
 
@@ -153,7 +173,11 @@ public final class Config {
         set("mineblaze", "quick_shop_keys", quickShopKeys); set("mineblaze", "hide_order_numbers", hideMineBlazeOrderNumbers);
         set("mineblaze", "auto_void_rejoin", autoVoidRejoin); set("mineblaze", "void_rejoin_y", voidRejoinY);
         set("mineblaze", "rejoin_delay_ms", rejoinDelayMs); set("cosmetics", "kira_skin", localKiraSkin);
-        set("cosmetics", "qmods_cape", localQModsCape); set("general", "schema_version", 2);
+        set("cosmetics", "qmods_cape", localQModsCape);
+        set("mineblaze", "bed_break_banner", bedBreakBanner); set("mineblaze", "final_kill_banner", finalKillBanner);
+        set("combat", "ping_hud", pingHud); set("combat", "cps_hud", cpsHud); set("combat", "coords_hud", coordsHud);
+        set("combat", "hit_particles", hitParticles); set("combat", "hit_marker", hitMarker); set("combat", "damage_indicator", damageIndicator);
+        set("general", "schema_version", 2);
         for (int i = 0; i < 8; i++) { set("binds", "text_" + (i + 1), bindText[i] == null ? "" : bindText[i]); set("binds", "key_" + (i + 1), bindKeys[i]); }
         cfg.save();
     }
