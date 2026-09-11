@@ -37,7 +37,7 @@ public final class CombatEffects {
         boolean crit = mc.thePlayer.fallDistance > 0F && !mc.thePlayer.onGround && !mc.thePlayer.isOnLadder() && !mc.thePlayer.isInWater();
         if (QModsTools.config.hitParticles) spawnHitParticles(e.entityLiving, crit);
         if (QModsTools.config.hitMarker) hitMarkerUntil = System.currentTimeMillis() + 220L;
-        popups.add(new Popup(String.format("-%.1f", e.amount), crit));
+        popups.add(new Popup(String.format("-%.1f", e.ammount), crit));
     }
 
     private void onLocalDamaged(Entity attacker) {
