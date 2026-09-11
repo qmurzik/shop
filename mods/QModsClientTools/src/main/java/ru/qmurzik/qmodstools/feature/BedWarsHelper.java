@@ -45,8 +45,13 @@ public final class BedWarsHelper {
         processPendingRejoin();
         if(QModsTools.rejoinKey!=null&&QModsTools.rejoinKey.isPressed()&&isMineBlazeServer())startRejoin("ручной бинд");
         boolean now=isMineBlazeBedWars(mc);if(!now){active=false;startedTick=-1;knownBed=false;basePos=null;return;}
+        Scoreboard b=mc.theWorld.getScoreboard();
+        // Team is only assigned once the real match begins - the shared waiting lobby has no
+        // teams yet, so gating on this avoids treating every nearby lobby player as an "intruder".
+        boolean inLobby=b.getPlayersTeam(mc.thePlayer.getName())==null;
+        if(inLobby){active=false;startedTick=-1;knownBed=false;basePos=null;return;}
         if(!active){active=true;startedTick=mc.thePlayer.ticksExisted;beds=finals=kills=0;basePos=new Vec3(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);}
-        Scoreboard b=mc.theWorld.getScoreboard();ScoreObjective o=objective(b,mc);if(o==null)return;
+        ScoreObjective o=objective(b,mc);if(o==null)return;
         Boolean currentBed=null;
         for(Score s:b.getSortedScores(o)){
             String line=EnumChatFormatting.getTextWithoutFormattingCodes(ScorePlayerTeam.formatPlayerName(b.getPlayersTeam(s.getPlayerName()),s.getPlayerName()));if(line==null)continue;
@@ -58,15 +63,21 @@ public final class BedWarsHelper {
         }
         if(currentBed!=null){if(knownBed&&ownBed&&!currentBed&&QModsTools.config.bedAlert)alertUntil=mc.thePlayer.ticksExisted+120;ownBed=currentBed;knownBed=true;}
         if(QModsTools.config.autoVoidRejoin&&shouldVoidRejoin())startRejoin("падение в бездну");
-        if(QModsTools.config.baseAlert&&basePos!=null&&mc.thePlayer.ticksExisted%20==0)checkBaseAlert(b);
+        int elapsed=mc.thePlayer.ticksExisted-startedTick;
+        if(QModsTools.config.baseAlert&&basePos!=null&&elapsed>200&&mc.thePlayer.ticksExisted%20==0)checkBaseAlert(b);
+    }
+
+    public static boolean hasTeam(Minecraft mc){
+        if(mc==null||mc.theWorld==null||mc.thePlayer==null)return false;
+        return mc.theWorld.getScoreboard().getPlayersTeam(mc.thePlayer.getName())!=null;
     }
 
     private void checkBaseAlert(Scoreboard b){
         long now=System.currentTimeMillis();if(now-lastBaseAlertMs<45000L)return;
-        ScorePlayerTeam myTeam=b.getPlayersTeam(mc.thePlayer.getName());
+        ScorePlayerTeam myTeam=b.getPlayersTeam(mc.thePlayer.getName());if(myTeam==null)return;
         for(Object raw:mc.theWorld.playerEntities){
             EntityPlayer p=(EntityPlayer)raw;if(p==mc.thePlayer)continue;
-            ScorePlayerTeam theirTeam=b.getPlayersTeam(p.getName());if(theirTeam!=null&&theirTeam==myTeam)continue;
+            ScorePlayerTeam theirTeam=b.getPlayersTeam(p.getName());if(theirTeam==null||theirTeam==myTeam)continue;
             double dx=p.posX-basePos.xCoord,dy=p.posY-basePos.yCoord,dz=p.posZ-basePos.zCoord;
             if(Math.sqrt(dx*dx+dy*dy+dz*dz)<=QModsTools.config.baseAlertRadius){
                 lastBaseAlertMs=now;mc.thePlayer.sendChatMessage(QModsTools.config.baseAlertPrefix+QModsTools.config.baseAlertMessage);return;

@@ -22,7 +22,7 @@ public final class KillFeed {
     public KillFeed(Minecraft mc) { this.mc = mc; }
 
     public void onChat(ClientChatReceivedEvent e) {
-        if (!QModsTools.config.killFeed || mc.thePlayer == null || mc.theWorld == null || e.type != 0 || !BedWarsHelper.isMineBlazeBedWars(mc)) return;
+        if (!QModsTools.config.killFeed || mc.thePlayer == null || mc.theWorld == null || e.type != 0 || !BedWarsHelper.isMineBlazeBedWars(mc) || !BedWarsHelper.hasTeam(mc)) return;
         String clean = EnumChatFormatting.getTextWithoutFormattingCodes(e.message.getUnformattedText());
         if (clean == null) return;
         String low = clean.toLowerCase(Locale.ROOT);
