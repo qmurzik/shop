@@ -1,0 +1,12 @@
+[
+  {
+    "modid": "qmodstools",
+    "name": "QMods Client Tools",
+    "description": "Trajectory prediction, motion lead, beautiful chat, scoreboard themes and text binds.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://qmods.ru",
+    "authorList": ["qmurzik", "Kira"],
+    "clientSideOnly": true
+  }
+]

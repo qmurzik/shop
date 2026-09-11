@@ -1,0 +1,84 @@
+package ru.qmurzik.qmodstools.gui;
+
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiTextField;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
+import ru.qmurzik.qmodstools.Config;
+import ru.qmurzik.qmodstools.QModsTools;
+import ru.qmurzik.qmodstools.util.ColorUtil;
+import ru.qmurzik.qmodstools.util.DrawUtil;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public final class GuiSettings extends GuiScreen {
+    private final GuiScreen parent;
+    private final String[] tabs={"Лук и упреждение","Красивый чат","Scoreboard","Текстовые бинды","MineBlaze BW","Внешность","Производительность"};
+    private final int[] palette={0xB060FF,0xFF5C9A,0x45D7FF,0x56E39F,0xFFB84D,0xFFFFFF};
+    private int tab=0,bindScroll=0,captureSlot=-1,captureSpecial=0;
+    private final List<GuiTextField> bindFields=new ArrayList<GuiTextField>();
+
+    public GuiSettings(GuiScreen parent){this.parent=parent;}
+
+    @Override public void initGui(){Keyboard.enableRepeatEvents(true);rebuildFields();}
+    @Override public void onGuiClosed(){Keyboard.enableRepeatEvents(false);syncFields();QModsTools.config.save();}
+
+    private void rebuildFields(){bindFields.clear();if(tab!=3)return;int cx=132,contentW=width-cx-20;for(int i=0;i<8;i++){GuiTextField f=new GuiTextField(i,fontRendererObj,cx+18,82+i*34-bindScroll*34,Math.max(100,contentW-116),20);f.setMaxStringLength(160);f.setText(QModsTools.config.bindText[i]==null?"":QModsTools.config.bindText[i]);bindFields.add(f);}}
+    private void syncFields(){for(int i=0;i<bindFields.size();i++)QModsTools.config.bindText[i]=bindFields.get(i).getText();}
+
+    @Override public void drawScreen(int mouseX,int mouseY,float partialTicks){
+        drawDefaultBackground();DrawUtil.gradient(0,0,width,height,0xEC0B0C12,0xF0161120);
+        DrawUtil.shadow(12,12,width-12,height-12,7);DrawUtil.rounded(12,12,width-12,height-12,7,0xEC12151E);
+        DrawUtil.gradient(12,12,width-12,60,0xFF282039,0xFF151824);DrawUtil.rect(12,58,width-12,60,ColorUtil.argb(accent(),210));
+        fontRendererObj.drawString("§lQMODS CLIENT TOOLS",28,27,0xFFFFFFFF,true);fontRendererObj.drawString("§7Forge 1.8.9  •  лёгкий клиентский HUD",28,43,0xFFB8B3C7,false);
+        int sy=75;for(int i=0;i<tabs.length;i++){boolean active=i==tab;if(active)DrawUtil.rounded(22,sy-5,121,sy+17,4,ColorUtil.argb(accent(),72));if(active)DrawUtil.rect(18,sy-4,21,sy+16,ColorUtil.argb(accent(),255));fontRendererObj.drawString((active?"§f":"§7")+tabs[i],28,sy+2,active?0xFFFFFFFF:0xFFAAA6B3,false);sy+=31;}
+        DrawUtil.rect(128,70,129,height-26,0x30FFFFFF);
+        switch(tab){case 0:drawArcher(mouseX,mouseY);break;case 1:drawChat(mouseX,mouseY);break;case 2:drawScoreboard(mouseX,mouseY);break;case 3:drawBinds(mouseX,mouseY);break;case 4:drawMineBlaze(mouseX,mouseY);break;case 5:drawCosmetics(mouseX,mouseY);break;default:drawPerformance(mouseX,mouseY);}
+        fontRendererObj.drawString("§f/qtools §7— резервное открытие меню",28,height-31,0xFF9A95A5,false);
+        int mk=width-151,my=height-39;DrawUtil.rounded(mk,my,width-24,my+22,4,ColorUtil.argb(captureSpecial==1?accent():0x292D39,230));drawCenteredString(fontRendererObj,captureSpecial==1?"НАЖМИ КЛАВИШУ":"Меню: "+keyName(QModsTools.settingsKey),mk+(width-24-mk)/2,my+7,0xFFFFFFFF);
+        super.drawScreen(mouseX,mouseY,partialTicks);
+    }
+
+    private void drawArcher(int mx,int my){title("Точный выстрел","Маркер упреждения + плавное доведение при натяжении");int y=102;toggle("Траектория полёта","Реальная физика и место столкновения",QModsTools.config.trajectory,y,mx,my);y+=36;toggle("Маркер упреждения","Показывать заметный указатель около прицела",QModsTools.config.aimGuide,y,mx,my);y+=36;toggle("Мягкое доведение","Плавно вести прицел к рассчитанной точке",QModsTools.config.aimAssist,y,mx,my);y+=36;toggle("Не целиться в союзников","Важно для командного BedWars",QModsTools.config.ignoreTeammates,y,mx,my);y+=39;slider("Сила доведения",QModsTools.config.aimStrength,.05,.65,y,"%.2f");y+=34;slider("Дальность цели",QModsTools.config.aimRange,12,128,y,"%.0f блоков");}
+    private void drawChat(int mx,int my){title("Красивый чат","Темы, плавное появление, время и текстовые эмодзи");int y=102;toggle("Свой рендер чата","Заменяет стандартный фон и строки",QModsTools.config.customChat,y,mx,my);y+=36;cycle("Тема",themeName(QModsTools.config.chatTheme),y);y+=34;slider("Прозрачность",QModsTools.config.chatAlpha,0,255,y,"%.0f");y+=34;toggle("Плавное появление","Новые сообщения мягко выезжают",QModsTools.config.chatAnimations,y,mx,my);y+=36;toggle("Время сообщений","Добавить метку HH:mm",QModsTools.config.chatTimestamps,y,mx,my);y+=36;toggle("Эмодзи из символов","Заменять :) <3 :D ;) :P :( ^^",QModsTools.config.emojiReplace,y,mx,my);y+=39;colorRow("Акцент",QModsTools.config.chatAccent,y);}
+    private void drawScoreboard(int mx,int my){title("Оформление scoreboard","Стекло, неон, карточки или минимализм");int y=102;toggle("Свой scoreboard","Красивый блок вместо стандартного",QModsTools.config.customScoreboard,y,mx,my);y+=36;cycle("Тема",themeName(QModsTools.config.scoreboardTheme),y);y+=34;slider("Прозрачность",QModsTools.config.scoreboardAlpha,0,255,y,"%.0f");y+=34;slider("Масштаб",QModsTools.config.scoreboardScale,.65,1.5,y,"%.2fx");y+=34;cycle("Сторона",QModsTools.config.scoreboardSide==1?"Справа":"Слева",y);y+=34;toggle("Очки справа","Показывать красные числа",QModsTools.config.scoreboardNumbers,y,mx,my);y+=38;colorRow("Акцент",QModsTools.config.scoreboardAccent,y);}
+    private void drawPerformance(int mx,int my){title("Производительность","Настройки для Intel HD 4000 и слабого процессора");int y=105;toggle("Лёгкий режим","Меньше сегментов и эффектов без потери физики",QModsTools.config.lowPower,y,mx,my);y+=42;slider("Частота расчёта",QModsTools.config.calculationInterval,1,6,y,"раз в %.0f тик(а)");y+=40;slider("Сегменты траектории",QModsTools.config.maxSteps,40,320,y,"%.0f");y+=45;info("Рекомендуется для твоего ноутбука: лёгкий режим, расчёт раз в 2 тика, 140–180 сегментов.",y);}
+    private void drawMineBlaze(int mx,int my){title("MineBlaze BedWars","HUD, магазин и безопасный быстрый перезаход");int mid=(148+width-34)/2;smallToggle("BedWars HUD",QModsTools.config.bedWarsHud,148,102,mid-5,mx,my);smallToggle("Помощник магазина",QModsTools.config.shopHelper,mid+5,102,width-34,mx,my);smallToggle("Тревога о кровати",QModsTools.config.bedAlert,148,138,mid-5,mx,my);smallToggle("Вкладки 1–9",QModsTools.config.quickShopKeys,mid+5,138,width-34,mx,my);smallToggle("Чистый scoreboard",QModsTools.config.hideMineBlazeOrderNumbers,148,174,mid-5,mx,my);smallToggle("Автоперезаход",QModsTools.config.autoVoidRejoin,mid+5,174,width-34,mx,my);slider("Высота бездны",QModsTools.config.voidRejoinY,-40,80,218,"Y %.0f");slider("Задержка /rejoin",QModsTools.config.rejoinDelayMs,500,3000,254,"%.0f мс");int x=158,y=293;DrawUtil.rounded(x,y,x+190,y+24,4,0xFF292D39);fontRendererObj.drawString("§fРучной перезаход",x+9,y+8,0xFFFFFFFF,false);int bx=x+198;DrawUtil.rounded(bx,y,bx+100,y+24,4,ColorUtil.argb(captureSpecial==2?accent():0x343845,230));drawCenteredString(fontRendererObj,captureSpecial==2?"НАЖМИ...":keyName(QModsTools.rejoinKey),bx+50,y+8,0xFFFFFFFF);}
+    private void drawCosmetics(int mx,int my){title("Локальная внешность","Скин и плащ видны только на твоём клиенте");int y=105;toggle("Скин Киры","Чёрно-фиолетовый образ и фиолетовые глаза",QModsTools.config.localKiraSkin,y,mx,my);y+=42;toggle("Плащ QMods","Чёрный плащ с фиолетово-голубым знаком",QModsTools.config.localQModsCape,y,mx,my);y+=48;info("Посмотреть можно от третьего лица клавишей F5. Другие игроки продолжат видеть твой обычный серверный скин.",y);}
+    private void drawBinds(int mx,int my){title("Текстовые бинды","Нажал клавишу — сообщение или команда отправились в чат");int top=78,bottom=height-45;for(int i=0;i<bindFields.size();i++){int y=82+i*34-bindScroll*34;if(y<top||y+22>bottom)continue;GuiTextField f=bindFields.get(i);f.yPosition=y;DrawUtil.rounded(140,y-3,width-34,y+24,4,0x501F2330);fontRendererObj.drawString("§d"+(i+1),136,y+6,0xFFFFFFFF,true);f.drawTextBox();int bx=width-126;DrawUtil.rounded(bx,y,bx+82,y+20,4,ColorUtil.argb(captureSlot==i?accent():0x2A2E3B,captureSlot==i?190:220));String key=captureSlot==i?"НАЖМИ...":QModsTools.binds.keyName(i);drawCenteredString(fontRendererObj,key,bx+41,y+6,0xFFFFFFFF);}
+        fontRendererObj.drawString("§7Колесо мыши — остальные слоты • пример: §f/i love qmods §7или §f/hub",146,height-40,0xFFAAA6B3,false);
+    }
+
+    private void title(String a,String b){fontRendererObj.drawString("§f§l"+a,148,76,0xFFFFFFFF,true);fontRendererObj.drawString("§7"+b,148,89,0xFFAAA6B3,false);}
+    private void toggle(String name,String desc,boolean on,int y,int mx,int my){int x=148;DrawUtil.rounded(x,y,x+Math.max(260,width-x-34),y+31,5,isHover(mx,my,x,y,width-34,y+31)?0x45272B38:0x30212731);fontRendererObj.drawString("§f"+name,x+10,y+6,0xFFFFFFFF,false);fontRendererObj.drawString("§8"+desc,x+10,y+18,0xFF878291,false);int bx=width-76;DrawUtil.rounded(bx,y+7,bx+34,y+23,8,on?ColorUtil.argb(accent(),230):0xFF3A3E49);DrawUtil.rounded(on?bx+20:bx+2,y+9,on?bx+32:bx+14,y+21,6,0xFFFFFFFF);}
+    private void smallToggle(String name,boolean on,int x1,int y,int x2,int mx,int my){DrawUtil.rounded(x1,y,x2,y+29,5,isHover(mx,my,x1,y,x2,y+29)?0x45272B38:0x30212731);fontRendererObj.drawString("§f"+name,x1+9,y+10,0xFFFFFFFF,false);int bx=x2-39;DrawUtil.rounded(bx,y+7,bx+31,y+22,8,on?ColorUtil.argb(accent(),230):0xFF3A3E49);DrawUtil.rounded(on?bx+18:bx+2,y+9,on?bx+29:bx+13,y+20,6,0xFFFFFFFF);}
+    private void cycle(String name,String value,int y){fontRendererObj.drawString("§f"+name,158,y+8,0xFFFFFFFF,false);int x=width-170;DrawUtil.rounded(x,y,x+126,y+24,4,0xFF292D39);drawCenteredString(fontRendererObj,"§d‹  §f"+value+"  §d›",x+63,y+8,0xFFFFFFFF);}
+    private void slider(String name,double value,double min,double max,int y,String fmt){fontRendererObj.drawString("§f"+name,158,y+3,0xFFFFFFFF,false);int x=158,w=Math.max(100,width-x-155),yy=y+18;DrawUtil.rounded(x,yy,x+w,yy+5,2,0xFF343845);int fill=(int)(w*(value-min)/(max-min));DrawUtil.rounded(x,yy,x+fill,yy+5,2,ColorUtil.argb(accent(),230));DrawUtil.rounded(x+fill-3,yy-2,x+fill+4,yy+8,4,0xFFFFFFFF);fontRendererObj.drawString(String.format(fmt,value),x+w+12,y+13,0xFFCBC7D2,false);}
+    private void colorRow(String name,int selected,int y){fontRendererObj.drawString("§f"+name,158,y+5,0xFFFFFFFF,false);int x=246;for(int c:palette){DrawUtil.rounded(x,y,x+22,y+22,5,0xFF000000|c);if(c==selected){DrawUtil.rect(x+4,y+19,x+18,y+21,0xFFFFFFFF);}x+=30;}}
+    private void info(String text,int y){DrawUtil.rounded(148,y,width-36,y+44,5,ColorUtil.argb(accent(),35));fontRendererObj.drawSplitString("§7"+text,160,y+10,width-215,0xFFCBC7D2);}
+
+    @Override protected void mouseClicked(int mx,int my,int button)throws IOException{super.mouseClicked(mx,my,button);if(button!=0)return;if(isHover(mx,my,width-151,height-39,width-24,height-17)){captureSpecial=1;return;}int sy=70;for(int i=0;i<tabs.length;i++){if(isHover(mx,my,18,sy,124,sy+25)){syncFields();tab=i;captureSlot=-1;captureSpecial=0;rebuildFields();return;}sy+=31;}if(tab==3){for(int i=0;i<bindFields.size();i++){GuiTextField f=bindFields.get(i);f.mouseClicked(mx,my,button);int y=f.yPosition;if(isHover(mx,my,width-126,y,width-44,y+20)){captureSlot=i;return;}}return;}int rejoinX=356;if(tab==4&&isHover(mx,my,rejoinX,293,rejoinX+100,317)){captureSpecial=2;return;}handleContentClick(mx,my);}
+
+    private void handleContentClick(int mx,int my){Config c=QModsTools.config;if(tab==0){if(hit(mx,my,102))c.trajectory=!c.trajectory;else if(hit(mx,my,138))c.aimGuide=!c.aimGuide;else if(hit(mx,my,174))c.aimAssist=!c.aimAssist;else if(hit(mx,my,210))c.ignoreTeammates=!c.ignoreTeammates;else if(sliderHit(mx,my,249))c.aimStrength=(float)slide(mx,.05,.65);else if(sliderHit(mx,my,283))c.aimRange=slide(mx,12,128);}
+        else if(tab==1){if(hit(mx,my,102))c.customChat=!c.customChat;else if(isHover(mx,my,width-170,138,width-44,162))c.chatTheme=(c.chatTheme+1)%6;else if(sliderHit(mx,my,172))c.chatAlpha=(int)slide(mx,0,255);else if(hit(mx,my,206))c.chatAnimations=!c.chatAnimations;else if(hit(mx,my,242))c.chatTimestamps=!c.chatTimestamps;else if(hit(mx,my,278))c.emojiReplace=!c.emojiReplace;else if(my>=317&&my<=341)c.chatAccent=pickColor(mx);}
+        else if(tab==2){if(hit(mx,my,102))c.customScoreboard=!c.customScoreboard;else if(isHover(mx,my,width-170,138,width-44,162))c.scoreboardTheme=(c.scoreboardTheme+1)%6;else if(sliderHit(mx,my,172))c.scoreboardAlpha=(int)slide(mx,0,255);else if(sliderHit(mx,my,206))c.scoreboardScale=(float)slide(mx,.65,1.5);else if(isHover(mx,my,width-170,240,width-44,264))c.scoreboardSide=1-c.scoreboardSide;else if(hit(mx,my,274))c.scoreboardNumbers=!c.scoreboardNumbers;else if(my>=312&&my<=336)c.scoreboardAccent=pickColor(mx);}
+        else if(tab==4){int mid=(148+width-34)/2;if(isHover(mx,my,148,102,mid-5,131))c.bedWarsHud=!c.bedWarsHud;else if(isHover(mx,my,mid+5,102,width-34,131))c.shopHelper=!c.shopHelper;else if(isHover(mx,my,148,138,mid-5,167))c.bedAlert=!c.bedAlert;else if(isHover(mx,my,mid+5,138,width-34,167))c.quickShopKeys=!c.quickShopKeys;else if(isHover(mx,my,148,174,mid-5,203))c.hideMineBlazeOrderNumbers=!c.hideMineBlazeOrderNumbers;else if(isHover(mx,my,mid+5,174,width-34,203))c.autoVoidRejoin=!c.autoVoidRejoin;else if(sliderHit(mx,my,218))c.voidRejoinY=(int)Math.round(slide(mx,-40,80));else if(sliderHit(mx,my,254))c.rejoinDelayMs=(int)Math.round(slide(mx,500,3000));}
+        else if(tab==5){if(hit(mx,my,105))c.localKiraSkin=!c.localKiraSkin;else if(hit(mx,my,147))c.localQModsCape=!c.localQModsCape;}
+        else if(tab==6){if(hit(mx,my,105))c.lowPower=!c.lowPower;else if(sliderHit(mx,my,147))c.calculationInterval=(int)Math.round(slide(mx,1,6));else if(sliderHit(mx,my,187))c.maxSteps=(int)Math.round(slide(mx,40,320));}c.save();}
+
+    @Override protected void mouseClickMove(int mx,int my,int button,long time){if(button!=0)return;Config c=QModsTools.config;if(tab==0){if(sliderHit(mx,my,249))c.aimStrength=(float)slide(mx,.05,.65);else if(sliderHit(mx,my,283))c.aimRange=slide(mx,12,128);}else if(tab==1&&sliderHit(mx,my,172))c.chatAlpha=(int)slide(mx,0,255);else if(tab==2){if(sliderHit(mx,my,172))c.scoreboardAlpha=(int)slide(mx,0,255);else if(sliderHit(mx,my,206))c.scoreboardScale=(float)slide(mx,.65,1.5);}else if(tab==4){if(sliderHit(mx,my,218))c.voidRejoinY=(int)Math.round(slide(mx,-40,80));else if(sliderHit(mx,my,254))c.rejoinDelayMs=(int)Math.round(slide(mx,500,3000));}else if(tab==6){if(sliderHit(mx,my,147))c.calculationInterval=(int)Math.round(slide(mx,1,6));else if(sliderHit(mx,my,187))c.maxSteps=(int)Math.round(slide(mx,40,320));}}
+    @Override protected void keyTyped(char ch,int key)throws IOException{if(captureSpecial>0){if(key==Keyboard.KEY_ESCAPE){captureSpecial=0;return;}int code=key==Keyboard.KEY_BACK||key==Keyboard.KEY_DELETE?0:key;if(captureSpecial==1)QModsTools.settingsKey.setKeyCode(code);else QModsTools.rejoinKey.setKeyCode(code);net.minecraft.client.settings.KeyBinding.resetKeyBindingArrayAndHash();mc.gameSettings.saveOptions();captureSpecial=0;return;}if(captureSlot>=0){if(key==Keyboard.KEY_ESCAPE){captureSlot=-1;return;}QModsTools.binds.setKey(captureSlot,key==Keyboard.KEY_BACK||key==Keyboard.KEY_DELETE?0:key);captureSlot=-1;QModsTools.config.save();return;}if(tab==3){for(GuiTextField f:bindFields)f.textboxKeyTyped(ch,key);}if(key==Keyboard.KEY_ESCAPE){mc.displayGuiScreen(parent);return;}super.keyTyped(ch,key);}
+    @Override public void handleMouseInput()throws IOException{super.handleMouseInput();if(tab==3){int d=Mouse.getEventDWheel();if(d!=0){syncFields();bindScroll=Math.max(0,Math.min(3,bindScroll+(d<0?1:-1)));rebuildFields();}}}
+
+    private boolean hit(int mx,int my,int y){return isHover(mx,my,148,y,width-34,y+31);}
+    private boolean sliderHit(int mx,int my,int y){return isHover(mx,my,150,y+8,width-38,y+30);}
+    private double slide(int mx,double min,double max){int x=158,w=Math.max(100,width-x-155);double f=Math.max(0,Math.min(1,(mx-x)/(double)w));return min+(max-min)*f;}
+    private int pickColor(int mx){int x=246;for(int c:palette){if(mx>=x&&mx<=x+22)return c;x+=30;}return accent();}
+    private boolean isHover(int mx,int my,int x1,int y1,int x2,int y2){return mx>=x1&&mx<=x2&&my>=y1&&my<=y2;}
+    private int accent(){return tab==2?QModsTools.config.scoreboardAccent:QModsTools.config.chatAccent;}
+    private String themeName(int i){return new String[]{"Стекло","Неон","Карточки","Минимал","Сакура","QMods"}[Math.max(0,Math.min(5,i))];}
+    private String keyName(net.minecraft.client.settings.KeyBinding key){int c=key.getKeyCode();return c==0?"НЕТ":Keyboard.getKeyName(c);}
+    @Override public boolean doesGuiPauseGame(){return false;}
+}
