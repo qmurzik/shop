@@ -23,6 +23,7 @@ public final class CombatEffects {
     private final List<Popup> popups = new ArrayList<Popup>();
     private final List<Indicator> indicators = new ArrayList<Indicator>();
     private long hitMarkerUntil, damageFlashUntil;
+    private boolean hitMarkerCrit;
 
     public CombatEffects(Minecraft mc) { this.mc = mc; }
 
@@ -36,7 +37,8 @@ public final class CombatEffects {
     private void onLocalHit(LivingHurtEvent e) {
         boolean crit = mc.thePlayer.fallDistance > 0F && !mc.thePlayer.onGround && !mc.thePlayer.isOnLadder() && !mc.thePlayer.isInWater();
         if (QModsTools.config.hitParticles) spawnHitParticles(e.entityLiving, crit);
-        if (QModsTools.config.hitMarker) hitMarkerUntil = System.currentTimeMillis() + 220L;
+        if (QModsTools.config.hitMarker) { hitMarkerUntil = System.currentTimeMillis() + 220L; hitMarkerCrit = crit; }
+        if (crit && QModsTools.config.critEffects) mc.thePlayer.playSound("random.orb", 0.5F, 1.6F);
         popups.add(new Popup(String.format("-%.1f", e.ammount), crit));
     }
 
@@ -77,7 +79,8 @@ public final class CombatEffects {
             DrawUtil.rect(0, 0, 4, sr.getScaledHeight(), c); DrawUtil.rect(sr.getScaledWidth() - 4, 0, sr.getScaledWidth(), sr.getScaledHeight(), c);
         }
         if (QModsTools.config.hitMarker && now < hitMarkerUntil) {
-            float t = (hitMarkerUntil - now) / 220F; int a = (int) (255 * t); int s = (int) (6 + 6 * (1 - t)); int c = ColorUtil.argb(0xFFFFFF, a);
+            float t = (hitMarkerUntil - now) / 220F; int a = (int) (255 * t); int s = (int) (6 + 6 * (1 - t));
+            int c = ColorUtil.argb(hitMarkerCrit ? 0xFFD24D : 0xFFFFFF, a);
             DrawUtil.rect(cx - s, cy - 1, cx + s, cy + 1, c); DrawUtil.rect(cx - 1, cy - s, cx + 1, cy + s, c);
         }
         for (Popup p : popups) {

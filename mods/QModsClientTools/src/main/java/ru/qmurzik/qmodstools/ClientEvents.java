@@ -17,6 +17,8 @@ import ru.qmurzik.qmodstools.feature.BedWarsEvents;
 import ru.qmurzik.qmodstools.feature.BedWarsHelper;
 import ru.qmurzik.qmodstools.feature.CombatEffects;
 import ru.qmurzik.qmodstools.feature.CpsCounter;
+import ru.qmurzik.qmodstools.feature.IncomingTranslator;
+import ru.qmurzik.qmodstools.feature.KillFeed;
 import ru.qmurzik.qmodstools.feature.TrajectoryRenderer;
 import ru.qmurzik.qmodstools.gui.GuiSettings;
 import ru.qmurzik.qmodstools.gui.CustomEmojiChat;
@@ -37,16 +39,19 @@ public final class ClientEvents {
     private final CombatEffects combat;
     private final CpsCounter cps;
     private final InfoHud infoHud;
+    private final KillFeed killFeed;
+    private final IncomingTranslator translator;
 
     public ClientEvents(Minecraft mc) {
         this.mc=mc; predictor=new AimPredictor(mc); trajectory=new TrajectoryRenderer(mc,predictor);
         chat=new CustomChatRenderer(mc); scoreboard=new ScoreboardRenderer(mc);aimHud=new AimHudRenderer(mc,predictor);bedWars=new BedWarsHelper(mc);
         bedWarsEvents=new BedWarsEvents(mc);combat=new CombatEffects(mc);cps=new CpsCounter();infoHud=new InfoHud(mc,cps);
+        killFeed=new KillFeed(mc);translator=new IncomingTranslator(mc);
     }
 
     @SubscribeEvent
     public void tick(TickEvent.ClientTickEvent e) {
-        if(e.phase!=TickEvent.Phase.END)return; predictor.tick();predictor.updateForCurrentBow();predictor.applySmoothAim();bedWars.tick();cps.tick();combat.tick();
+        if(e.phase!=TickEvent.Phase.END)return; predictor.tick();predictor.updateForCurrentBow();predictor.applySmoothAim();bedWars.tick();cps.tick();combat.tick();killFeed.tick();bedWarsEvents.tick();
         GuiIngameForge.renderObjective=!QModsTools.config.customScoreboard;
         if(QModsTools.config.emojiReplace&&mc.currentScreen instanceof GuiChat&&!(mc.currentScreen instanceof CustomEmojiChat)){
             String initial="";try{net.minecraft.client.gui.GuiTextField f=ReflectionHelper.getPrivateValue(GuiChat.class,(GuiChat)mc.currentScreen,"field_146415_a","inputField");if(f!=null)initial=f.getText();}catch(Exception ignored){}
@@ -65,7 +70,7 @@ public final class ClientEvents {
     public void chatOverlay(RenderGameOverlayEvent.Chat e){if(QModsTools.config.customChat){e.setCanceled(true);chat.render(mc.ingameGUI.getUpdateCounter());}}
 
     @SubscribeEvent
-    public void overlayPost(RenderGameOverlayEvent.Post e){if(e.type==RenderGameOverlayEvent.ElementType.CROSSHAIRS)aimHud.render();if(e.type==RenderGameOverlayEvent.ElementType.ALL){if(QModsTools.config.customScoreboard)scoreboard.render();bedWars.render();infoHud.render();combat.render();bedWarsEvents.render();}}
+    public void overlayPost(RenderGameOverlayEvent.Post e){if(e.type==RenderGameOverlayEvent.ElementType.CROSSHAIRS)aimHud.render();if(e.type==RenderGameOverlayEvent.ElementType.ALL){if(QModsTools.config.customScoreboard)scoreboard.render();bedWars.render();infoHud.render();combat.render();bedWarsEvents.render();killFeed.render();}}
 
     @SubscribeEvent
     public void shopOverlay(GuiScreenEvent.DrawScreenEvent.Post e){bedWars.drawShop(e);}
@@ -77,5 +82,5 @@ public final class ClientEvents {
     public void hurt(LivingHurtEvent e){combat.onHurt(e);}
 
     @SubscribeEvent
-    public void chat(ClientChatReceivedEvent e){bedWarsEvents.onChat(e);}
+    public void chat(ClientChatReceivedEvent e){bedWarsEvents.onChat(e);killFeed.onChat(e);translator.onChat(e);}
 }

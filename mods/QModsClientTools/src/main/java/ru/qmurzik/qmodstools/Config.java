@@ -61,6 +61,7 @@ public final class Config {
     public boolean localQModsCape = true;
     public boolean bedBreakBanner = true;
     public boolean finalKillBanner = true;
+    public int cosmeticVariant = 0;
 
     public boolean pingHud = true;
     public boolean cpsHud = false;
@@ -68,6 +69,26 @@ public final class Config {
     public boolean hitParticles = true;
     public boolean hitMarker = true;
     public boolean damageIndicator = true;
+    public boolean critEffects = true;
+
+    public boolean killFeed = true;
+    public boolean autoGg = false;
+    public String autoGgText = "gg wp";
+    public boolean genTimers = true;
+    public int diamondGenInterval = 30;
+    public int emeraldGenInterval = 60;
+    public boolean shopReminder = true;
+    public int lowArrowThreshold = 4;
+    public int lowBlockThreshold = 16;
+    public boolean baseAlert = false;
+    public int baseAlertRadius = 20;
+    public String baseAlertPrefix = "";
+    public String baseAlertMessage = "На нашу базу идут враги!";
+
+    public boolean chatMentionHighlight = true;
+    public boolean translateOutgoing = true;
+    public boolean translateIncoming = false;
+    public String translateTargetLang = "en";
 
     public final String[] bindText = new String[8];
     public final int[] bindKeys = new int[8];
@@ -130,6 +151,7 @@ public final class Config {
         localQModsCape = bool("cosmetics", "qmods_cape", localQModsCape);
         bedBreakBanner = bool("mineblaze", "bed_break_banner", bedBreakBanner);
         finalKillBanner = bool("mineblaze", "final_kill_banner", finalKillBanner);
+        cosmeticVariant = integer("cosmetics", "variant", cosmeticVariant, 0, 2);
 
         pingHud = bool("combat", "ping_hud", pingHud);
         cpsHud = bool("combat", "cps_hud", cpsHud);
@@ -137,6 +159,26 @@ public final class Config {
         hitParticles = bool("combat", "hit_particles", hitParticles);
         hitMarker = bool("combat", "hit_marker", hitMarker);
         damageIndicator = bool("combat", "damage_indicator", damageIndicator);
+        critEffects = bool("combat", "crit_effects", critEffects);
+
+        killFeed = bool("mineblaze", "kill_feed", killFeed);
+        autoGg = bool("mineblaze", "auto_gg", autoGg);
+        autoGgText = cfg.getString("auto_gg_text", "mineblaze", autoGgText, "Message sent on game end");
+        genTimers = bool("mineblaze", "gen_timers", genTimers);
+        diamondGenInterval = integer("mineblaze", "diamond_gen_interval", diamondGenInterval, 5, 300);
+        emeraldGenInterval = integer("mineblaze", "emerald_gen_interval", emeraldGenInterval, 5, 300);
+        shopReminder = bool("mineblaze", "shop_reminder", shopReminder);
+        lowArrowThreshold = integer("mineblaze", "low_arrow_threshold", lowArrowThreshold, 0, 64);
+        lowBlockThreshold = integer("mineblaze", "low_block_threshold", lowBlockThreshold, 0, 128);
+        baseAlert = bool("mineblaze", "base_alert", baseAlert);
+        baseAlertRadius = integer("mineblaze", "base_alert_radius", baseAlertRadius, 5, 60);
+        baseAlertPrefix = cfg.getString("base_alert_prefix", "mineblaze", baseAlertPrefix, "Prefix for team-only chat, e.g. !");
+        baseAlertMessage = cfg.getString("base_alert_message", "mineblaze", baseAlertMessage, "Alert text");
+
+        chatMentionHighlight = bool("chat", "mention_highlight", chatMentionHighlight);
+        translateOutgoing = bool("chat", "translate_outgoing", translateOutgoing);
+        translateIncoming = bool("chat", "translate_incoming", translateIncoming);
+        translateTargetLang = cfg.getString("translate_target_lang", "chat", translateTargetLang, "Target language code for outgoing translation");
 
         int schema = integer("general", "schema_version", 0, 0, 99);
         if (schema < 2) quickShopKeys = true;
@@ -175,8 +217,17 @@ public final class Config {
         set("mineblaze", "rejoin_delay_ms", rejoinDelayMs); set("cosmetics", "kira_skin", localKiraSkin);
         set("cosmetics", "qmods_cape", localQModsCape);
         set("mineblaze", "bed_break_banner", bedBreakBanner); set("mineblaze", "final_kill_banner", finalKillBanner);
+        set("cosmetics", "variant", cosmeticVariant);
         set("combat", "ping_hud", pingHud); set("combat", "cps_hud", cpsHud); set("combat", "coords_hud", coordsHud);
         set("combat", "hit_particles", hitParticles); set("combat", "hit_marker", hitMarker); set("combat", "damage_indicator", damageIndicator);
+        set("combat", "crit_effects", critEffects);
+        set("mineblaze", "kill_feed", killFeed); set("mineblaze", "auto_gg", autoGg); set("mineblaze", "auto_gg_text", autoGgText);
+        set("mineblaze", "gen_timers", genTimers); set("mineblaze", "diamond_gen_interval", diamondGenInterval); set("mineblaze", "emerald_gen_interval", emeraldGenInterval);
+        set("mineblaze", "shop_reminder", shopReminder); set("mineblaze", "low_arrow_threshold", lowArrowThreshold); set("mineblaze", "low_block_threshold", lowBlockThreshold);
+        set("mineblaze", "base_alert", baseAlert); set("mineblaze", "base_alert_radius", baseAlertRadius);
+        set("mineblaze", "base_alert_prefix", baseAlertPrefix); set("mineblaze", "base_alert_message", baseAlertMessage);
+        set("chat", "mention_highlight", chatMentionHighlight); set("chat", "translate_outgoing", translateOutgoing);
+        set("chat", "translate_incoming", translateIncoming); set("chat", "translate_target_lang", translateTargetLang);
         set("general", "schema_version", 2);
         for (int i = 0; i < 8; i++) { set("binds", "text_" + (i + 1), bindText[i] == null ? "" : bindText[i]); set("binds", "key_" + (i + 1), bindKeys[i]); }
         cfg.save();

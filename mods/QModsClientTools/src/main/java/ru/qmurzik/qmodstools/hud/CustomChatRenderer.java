@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.GuiNewChat;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import ru.qmurzik.qmodstools.Config;
@@ -18,6 +19,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class CustomChatRenderer {
@@ -64,11 +66,13 @@ public final class CustomChatRenderer {
             else DrawUtil.rect(slide-1,y-1,panelW,y+8,(Math.min(alpha,38)<<24));
             String text=line.getChatComponent().getFormattedText();if(c.emojiReplace)text=EmojiReplacer.replace(text);
             if(c.chatTimestamps){String tm=times.get(line);if(tm==null){tm=clock.format(new Date());times.put(line,tm);}text="§8["+tm+"] §r"+text;}
+            if(c.chatMentionHighlight&&mc.thePlayer!=null&&isMention(text))DrawUtil.rect(slide-1,y-1,panelW,y+8,ColorUtil.argb(c.chatAccent,Math.min(70,alpha)));
             int textColor=(alpha<<24)|0xFFFFFF;mc.fontRendererObj.drawString(text,slide+2,y,textColor,c.chatShadow);row++;
         }
         GlStateManager.popMatrix();
     }
 
+    private boolean isMention(String text){String clean=EnumChatFormatting.getTextWithoutFormattingCodes(text);return clean!=null&&clean.toLowerCase(Locale.ROOT).contains(mc.thePlayer.getName().toLowerCase(Locale.ROOT));}
     private int getLineCount(boolean open){float h=open?mc.gameSettings.chatHeightFocused:mc.gameSettings.chatHeightUnfocused;return MathHelper.floor_float((h*160F+20F)/9F);}
     private int getWidth(){return MathHelper.floor_float(mc.gameSettings.chatWidth*280F+40F);}
     private int themeBackground(int theme){switch(theme){case 1:return 0x100B1D;case 2:return 0x17121F;case 3:return 0;case 4:return 0x2A1521;case 5:return 0x0E1020;default:return 0x11131A;}}

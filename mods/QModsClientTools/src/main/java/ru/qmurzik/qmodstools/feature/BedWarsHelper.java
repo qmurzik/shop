@@ -5,13 +5,16 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.gui.inventory.GuiChest;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.ContainerChest;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.scoreboard.*;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.Vec3;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.lwjgl.input.Keyboard;
@@ -19,6 +22,7 @@ import ru.qmurzik.qmodstools.QModsTools;
 import ru.qmurzik.qmodstools.util.ColorUtil;
 import ru.qmurzik.qmodstools.util.DrawUtil;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -32,14 +36,16 @@ public final class BedWarsHelper {
     private int startedTick=-1,alertUntil=-1,beds,finals,kills;
     private boolean rejoinPending;
     private long rejoinAtMs,rejoinDeadlineMs,lastRejoinMs;
+    private Vec3 basePos;
+    private long lastBaseAlertMs;
 
     public BedWarsHelper(Minecraft mc){this.mc=mc;}
 
     public void tick(){
         processPendingRejoin();
         if(QModsTools.rejoinKey!=null&&QModsTools.rejoinKey.isPressed()&&isMineBlazeServer())startRejoin("ручной бинд");
-        boolean now=isMineBlazeBedWars(mc);if(!now){active=false;startedTick=-1;knownBed=false;return;}
-        if(!active){active=true;startedTick=mc.thePlayer.ticksExisted;beds=finals=kills=0;}
+        boolean now=isMineBlazeBedWars(mc);if(!now){active=false;startedTick=-1;knownBed=false;basePos=null;return;}
+        if(!active){active=true;startedTick=mc.thePlayer.ticksExisted;beds=finals=kills=0;basePos=new Vec3(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);}
         Scoreboard b=mc.theWorld.getScoreboard();ScoreObjective o=objective(b,mc);if(o==null)return;
         Boolean currentBed=null;
         for(Score s:b.getSortedScores(o)){
@@ -52,6 +58,20 @@ public final class BedWarsHelper {
         }
         if(currentBed!=null){if(knownBed&&ownBed&&!currentBed&&QModsTools.config.bedAlert)alertUntil=mc.thePlayer.ticksExisted+120;ownBed=currentBed;knownBed=true;}
         if(QModsTools.config.autoVoidRejoin&&shouldVoidRejoin())startRejoin("падение в бездну");
+        if(QModsTools.config.baseAlert&&basePos!=null&&mc.thePlayer.ticksExisted%20==0)checkBaseAlert(b);
+    }
+
+    private void checkBaseAlert(Scoreboard b){
+        long now=System.currentTimeMillis();if(now-lastBaseAlertMs<45000L)return;
+        ScorePlayerTeam myTeam=b.getPlayersTeam(mc.thePlayer.getName());
+        for(Object raw:mc.theWorld.playerEntities){
+            EntityPlayer p=(EntityPlayer)raw;if(p==mc.thePlayer)continue;
+            ScorePlayerTeam theirTeam=b.getPlayersTeam(p.getName());if(theirTeam!=null&&theirTeam==myTeam)continue;
+            double dx=p.posX-basePos.xCoord,dy=p.posY-basePos.yCoord,dz=p.posZ-basePos.zCoord;
+            if(Math.sqrt(dx*dx+dy*dy+dz*dz)<=QModsTools.config.baseAlertRadius){
+                lastBaseAlertMs=now;mc.thePlayer.sendChatMessage(QModsTools.config.baseAlertPrefix+QModsTools.config.baseAlertMessage);return;
+            }
+        }
     }
 
     public void render(){
@@ -60,9 +80,22 @@ public final class BedWarsHelper {
         String stats=String.format("§6BEDWARS §8• §f%02d:%02d §8• §dКровати §f%d §8• §cФиналы §f%d §8• §7Убийства §f%d",seconds/60,seconds%60,beds,finals,kills);
         int sw=mc.fontRendererObj.getStringWidth(stats)+16,x=sr.getScaledWidth()/2-sw/2;
         DrawUtil.shadow(x,7,x+sw,27,4);DrawUtil.rounded(x,7,x+sw,27,4,0xC012151D);DrawUtil.rect(x,7,x+sw,9,ColorUtil.argb(0xB060FF,220));mc.fontRendererObj.drawString(stats,x+8,13,0xFFFFFFFF,true);
-        int[] amounts={count(Items.iron_ingot),count(Items.gold_ingot),count(Items.diamond),count(Items.emerald),count(Items.arrow)};
-        String[] labels={"§fFe","§6Au","§b♦","§a✦","§f➶"};int total=amounts.length*45,gx=sr.getScaledWidth()/2-total/2,gy=31;
-        for(int i=0;i<amounts.length;i++){int bx=gx+i*45;DrawUtil.rounded(bx,gy,bx+41,gy+17,4,0xAD171A22);mc.fontRendererObj.drawString(labels[i]+" §f"+amounts[i],bx+6,gy+5,0xFFFFFFFF,true);}
+        List<String> labelList=new ArrayList<String>();List<Integer> amountList=new ArrayList<Integer>();
+        labelList.add("§fFe");amountList.add(count(Items.iron_ingot));
+        labelList.add("§6Au");amountList.add(count(Items.gold_ingot));
+        labelList.add("§b♦");amountList.add(count(Items.diamond));
+        labelList.add("§a✦");amountList.add(count(Items.emerald));
+        int arrowIdx=labelList.size();labelList.add("§f➶");amountList.add(count(Items.arrow));
+        int blockIdx=labelList.size();labelList.add("§f▦");amountList.add(countBlocks());
+        if(QModsTools.config.genTimers){int secs=Math.max(0,(tick-startedTick)/20);
+            labelList.add("§b⏱♦");amountList.add(QModsTools.config.diamondGenInterval-(secs%QModsTools.config.diamondGenInterval));
+            labelList.add("§a⏱✦");amountList.add(QModsTools.config.emeraldGenInterval-(secs%QModsTools.config.emeraldGenInterval));
+        }
+        int total=labelList.size()*45,gx=sr.getScaledWidth()/2-total/2,gy=31;
+        for(int i=0;i<labelList.size();i++){int bx=gx+i*45;int amount=amountList.get(i);
+            boolean low=QModsTools.config.shopReminder&&((i==arrowIdx&&amount<QModsTools.config.lowArrowThreshold)||(i==blockIdx&&amount<QModsTools.config.lowBlockThreshold));
+            DrawUtil.rounded(bx,gy,bx+41,gy+17,4,low?0xCC5A1620:0xAD171A22);
+            mc.fontRendererObj.drawString(labelList.get(i)+" "+(low?"§c":"§f")+amount,bx+6,gy+5,0xFFFFFFFF,true);}
         if(alertUntil>tick){String warn="§c§lКРОВАТЬ СЛОМАНА §8• §fвозрождения больше нет";int ww=mc.fontRendererObj.getStringWidth(warn)+20,wx=sr.getScaledWidth()/2-ww/2,wy=55;DrawUtil.shadow(wx,wy,wx+ww,wy+24,5);DrawUtil.rounded(wx,wy,wx+ww,wy+24,5,0xD8240D14);DrawUtil.rect(wx,wy,wx+ww,wy+3,0xFFFF3F62);mc.fontRendererObj.drawString(warn,wx+10,wy+8,0xFFFFFFFF,true);}
         if(rejoinPending){long left=Math.max(0,rejoinAtMs-System.currentTimeMillis());String text="§dQMods §8• §f/rejoin через §d"+String.format("%.1f",left/1000D)+"с";int w=mc.fontRendererObj.getStringWidth(text)+16,rx=sr.getScaledWidth()/2-w/2,ry=55;DrawUtil.rounded(rx,ry,rx+w,ry+19,5,0xD012151D);mc.fontRendererObj.drawString(text,rx+8,ry+6,0xFFFFFFFF,true);}
     }
@@ -100,6 +133,7 @@ public final class BedWarsHelper {
     private void processPendingRejoin(){if(!rejoinPending)return;long now=System.currentTimeMillis();if(now>rejoinDeadlineMs){rejoinPending=false;return;}if(now>=rejoinAtMs&&mc.thePlayer!=null){mc.thePlayer.sendChatMessage("/rejoin");mc.thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText("§dQMods §8• §fОтправлена команда §d/rejoin"));rejoinPending=false;}}
     private int number(String s,int fallback){Matcher m=NUMBER.matcher(s);return m.find()?Integer.parseInt(m.group(1)):fallback;}
     private int count(Item item){int n=0;for(ItemStack s:mc.thePlayer.inventory.mainInventory)if(s!=null&&s.getItem()==item)n+=s.stackSize;return n;}
+    private int countBlocks(){int n=0;for(ItemStack s:mc.thePlayer.inventory.mainInventory)if(s!=null&&s.getItem() instanceof ItemBlock)n+=s.stackSize;return n;}
     private Cost cost(ItemStack stack){List<String> tip=stack.getTooltip(mc.thePlayer,false);for(String raw:tip){String s=EnumChatFormatting.getTextWithoutFormattingCodes(raw);if(s==null)continue;s=s.toLowerCase(Locale.ROOT);Matcher m=NUMBER.matcher(s);if(!m.find())continue;int n=Integer.parseInt(m.group(1));if(s.contains("желез"))return new Cost(Items.iron_ingot,n,"железа");if(s.contains("золот"))return new Cost(Items.gold_ingot,n,"золота");if(s.contains("алмаз"))return new Cost(Items.diamond,n,"алмазов");if(s.contains("изумруд"))return new Cost(Items.emerald,n,"изумрудов");}return null;}
     private static final class Cost{final Item item;final int amount;final String label;Cost(Item item,int amount,String label){this.item=item;this.amount=amount;this.label=label;}}
 }
