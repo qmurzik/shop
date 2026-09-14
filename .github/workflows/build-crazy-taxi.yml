@@ -1,0 +1,69 @@
+name: Build Crazy Taxi 3D APK
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - claude/fix-mod-crashes-rcuint
+    paths:
+      - CrazyTaxi3D_J2ME182_standalone/**
+      - .github/workflows/build-crazy-taxi.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch package
+        uses: actions/checkout@v4
+        with:
+          path: patch
+
+      - name: Checkout J2ME Loader 1.8.2
+        uses: actions/checkout@v4
+        with:
+          repository: nikita36078/J2ME-Loader
+          ref: 7e978c5
+          path: j2me
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Apply standalone overlay
+        run: python3 patch/CrazyTaxi3D_J2ME182_standalone/apply_overlay.py "$GITHUB_WORKSPACE/j2me"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x j2me/gradlew
+
+      - name: Build Open Debug APK
+        working-directory: j2me
+        run: ./gradlew assembleOpenDebug --stacktrace
+
+      - name: Locate built APK
+        id: apk
+        run: |
+          apk_path=$(find j2me/app/build/outputs/apk/open/debug -maxdepth 1 -name '*.apk' | head -n1)
+          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$apk_path")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CrazyTaxi3D-J2ME-Loader-1.8.2
+          path: ${{ steps.apk.outputs.path }}
+
+      - name: Commit compiled APK back to the branch
+        run: |
+          mkdir -p patch/CrazyTaxi3D_J2ME182_standalone/dist
+          cp "${{ steps.apk.outputs.path }}" "patch/CrazyTaxi3D_J2ME182_standalone/dist/${{ steps.apk.outputs.name }}"
+          cd patch
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "CrazyTaxi3D_J2ME182_standalone/dist/${{ steps.apk.outputs.name }}"
+          git commit -m "Add compiled ${{ steps.apk.outputs.name }} [skip ci]" || echo "nothing to commit"
+          git push origin HEAD:${{ github.ref_name }}
