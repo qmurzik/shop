@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:label="3D Solid Weapon 2"
+        tools:replace="android:label">
+
+        <activity
+            android:name="ru.playsoftware.j2meloader.MainActivity"
+            tools:node="remove" />
+
+        <activity
+            android:name="ru.woesss.j2me.installer.StandaloneActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
