@@ -41,6 +41,19 @@ jobs:
       - name: Apply standalone overlay
         run: python3 patch/CrazyTaxi3D_J2ME182_standalone/apply_overlay.py "$GITHUB_WORKSPACE/j2me"
 
+      - name: Provide dummy keystore.properties
+        working-directory: j2me
+        run: |
+          # app/build.gradle's signingConfigs.release block loads keystore.properties
+          # eagerly at Gradle configuration time (not lazily), so it must exist even
+          # though assembleOpenDebug never actually uses the release signing config.
+          cat > keystore.properties <<'EOF'
+          storeFile=dummy.keystore
+          storePassword=dummy
+          keyAlias=dummy
+          keyPassword=dummy
+          EOF
+
       - name: Make Gradle wrapper executable
         run: chmod +x j2me/gradlew
 
