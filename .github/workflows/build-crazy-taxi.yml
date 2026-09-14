@@ -25,8 +25,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: nikita36078/J2ME-Loader
-          ref: 7e978c5
+          fetch-depth: 0
           path: j2me
+
+      - name: Pin J2ME Loader to commit 7e978c5
+        working-directory: j2me
+        run: git checkout 7e978c5
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
