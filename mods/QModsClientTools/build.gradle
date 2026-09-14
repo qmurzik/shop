@@ -7,7 +7,7 @@ buildscript {
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = "1.9.2"
+version = "1.9.3"
 group = "ru.qmurzik.qmodstools"
 archivesBaseName = "QMods-Client-Tools-1.8.9"
 sourceCompatibility = targetCompatibility = "1.8"
