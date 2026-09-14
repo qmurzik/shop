@@ -68,9 +68,12 @@ public final class BedWarsHelper {
         if(QModsTools.config.baseAlert&&basePos!=null&&elapsed>200&&mc.thePlayer.ticksExisted%20==0)checkBaseAlert(b);
     }
 
-    /** True once a real match (not the shared pre-game lobby) is confirmed running, per the current scoreboard. */
+    /** True once a real match (not the shared pre-game lobby) is confirmed running, per the current scoreboard.
+     *  Deliberately does NOT require isMineBlazeBedWars() - that heuristic depends on the objective title
+     *  literally containing "bedwars", which isn't guaranteed to match this server's actual wording/styling,
+     *  and would silently disable match detection (and everything built on it, incl. auto-rejoin) if it doesn't. */
     public static boolean isMatchInProgress(Minecraft mc){
-        if(!isMineBlazeBedWars(mc))return false;
+        if(mc==null||mc.theWorld==null||mc.thePlayer==null)return false;
         if(observedWorld!=mc.theWorld){observedWorld=mc.theWorld;chatMatchEvidenceUntilMs=0L;}
         Scoreboard b=mc.theWorld.getScoreboard();ScoreObjective o=objective(b,mc);if(o==null)return false;
         for(Score s:b.getSortedScores(o)){
@@ -82,7 +85,7 @@ public final class BedWarsHelper {
 
     /** Must run before feature chat handlers: the broadcast itself can be the first reliable match evidence. */
     public void observeChat(ClientChatReceivedEvent e){
-        if(e==null||e.message==null||e.type==2||!isMineBlazeBedWars(mc))return;
+        if(e==null||e.message==null||e.type==2||mc.theWorld==null||mc.thePlayer==null)return;
         String low=normalize(e.message.getUnformattedText());if(low.isEmpty())return;
         boolean matchEvent=(low.contains("кроват")&&(low.contains("уничтож")||low.contains("разруш")||low.contains("сломан")))
                 ||low.contains("final kill")||low.contains("финальн")
