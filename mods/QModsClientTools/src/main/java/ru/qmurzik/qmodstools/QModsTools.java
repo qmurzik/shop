@@ -19,7 +19,7 @@ import ru.qmurzik.qmodstools.cosmetic.CosmeticRenderer;
 public class QModsTools {
     public static final String MOD_ID = "qmodstools";
     public static final String NAME = "QMods Client Tools";
-    public static final String VERSION = "1.5.1";
+    public static final String VERSION = "1.9.2";
     public static Config config;
     public static KeyBinding settingsKey;
     public static KeyBinding trajectoryKey;

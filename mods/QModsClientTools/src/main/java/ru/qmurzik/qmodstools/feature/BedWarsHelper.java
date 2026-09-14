@@ -15,6 +15,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.scoreboard.*;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.Vec3;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.lwjgl.input.Keyboard;
@@ -31,6 +32,8 @@ import java.util.regex.Pattern;
 
 public final class BedWarsHelper {
     private static final Pattern NUMBER=Pattern.compile("(\\d+)");
+    private static Object observedWorld;
+    private static long chatMatchEvidenceUntilMs;
     private final Minecraft mc;
     private boolean active,ownBed=true,knownBed;
     private int startedTick=-1,alertUntil=-1,beds,finals,kills;
@@ -38,14 +41,17 @@ public final class BedWarsHelper {
     private long rejoinAtMs,rejoinDeadlineMs,lastRejoinMs;
     private Vec3 basePos;
     private long lastBaseAlertMs;
+    private long baseThreatUntilMs;
+    private String baseThreatName="враг";
 
     public BedWarsHelper(Minecraft mc){this.mc=mc;}
 
     public void tick(){
         processPendingRejoin();
         if(QModsTools.rejoinKey!=null&&QModsTools.rejoinKey.isPressed()&&isMineBlazeServer())startRejoin("ручной бинд");
-        boolean now=isMineBlazeBedWars(mc);if(!now){active=false;startedTick=-1;knownBed=false;basePos=null;return;}
+        boolean now=isMatchInProgress(mc);if(!now){active=false;startedTick=-1;knownBed=false;basePos=null;return;}
         Scoreboard b=mc.theWorld.getScoreboard();ScoreObjective o=objective(b,mc);if(o==null)return;
+        if(!active){active=true;startedTick=mc.thePlayer.ticksExisted;beds=finals=kills=0;knownBed=false;basePos=new Vec3(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);}
         Boolean currentBed=null;boolean sawStats=false;
         for(Score s:b.getSortedScores(o)){
             String line=EnumChatFormatting.getTextWithoutFormattingCodes(ScorePlayerTeam.formatPlayerName(b.getPlayersTeam(s.getPlayerName()),s.getPlayerName()));if(line==null)continue;
@@ -55,12 +61,7 @@ public final class BedWarsHelper {
             else if(low.contains("убийств")){kills=number(line,kills);sawStats=true;}
             if(low.contains("(вы)"))currentBed=!(line.contains("✘")||line.contains("×")||low.contains(" x "));
         }
-        // Personal kill/bed counters only appear on the scoreboard once a real match is running -
-        // the shared pre-game lobby scoreboard doesn't show them. Used instead of vanilla
-        // scoreboard teams, since this server doesn't seem to assign those via the vanilla API.
-        if(sawStats&&!active){active=true;startedTick=mc.thePlayer.ticksExisted;beds=finals=kills=0;basePos=new Vec3(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);}
-        else if(!sawStats&&active){active=false;startedTick=-1;knownBed=false;basePos=null;}
-        if(!active)return;
+        if(sawStats)chatMatchEvidenceUntilMs=Math.max(chatMatchEvidenceUntilMs,System.currentTimeMillis()+2500L);
         if(currentBed!=null){if(knownBed&&ownBed&&!currentBed&&QModsTools.config.bedAlert)alertUntil=mc.thePlayer.ticksExisted+120;ownBed=currentBed;knownBed=true;}
         if(QModsTools.config.autoVoidRejoin&&shouldVoidRejoin())startRejoin("падение в бездну");
         int elapsed=mc.thePlayer.ticksExisted-startedTick;
@@ -70,13 +71,24 @@ public final class BedWarsHelper {
     /** True once a real match (not the shared pre-game lobby) is confirmed running, per the current scoreboard. */
     public static boolean isMatchInProgress(Minecraft mc){
         if(!isMineBlazeBedWars(mc))return false;
+        if(observedWorld!=mc.theWorld){observedWorld=mc.theWorld;chatMatchEvidenceUntilMs=0L;}
         Scoreboard b=mc.theWorld.getScoreboard();ScoreObjective o=objective(b,mc);if(o==null)return false;
         for(Score s:b.getSortedScores(o)){
-            String line=EnumChatFormatting.getTextWithoutFormattingCodes(ScorePlayerTeam.formatPlayerName(b.getPlayersTeam(s.getPlayerName()),s.getPlayerName()));if(line==null)continue;
-            String low=line.toLowerCase(Locale.ROOT);
-            if(low.contains("сломано кроватей")||low.contains("финальных убийств")||low.contains("убийств"))return true;
+            String low=normalize(ScorePlayerTeam.formatPlayerName(b.getPlayersTeam(s.getPlayerName()),s.getPlayerName()));
+            if(isMatchScoreLine(low))return true;
         }
-        return false;
+        return System.currentTimeMillis()<chatMatchEvidenceUntilMs;
+    }
+
+    /** Must run before feature chat handlers: the broadcast itself can be the first reliable match evidence. */
+    public void observeChat(ClientChatReceivedEvent e){
+        if(e==null||e.message==null||e.type==2||!isMineBlazeBedWars(mc))return;
+        String low=normalize(e.message.getUnformattedText());if(low.isEmpty())return;
+        boolean matchEvent=(low.contains("кроват")&&(low.contains("уничтож")||low.contains("разруш")||low.contains("сломан")))
+                ||low.contains("final kill")||low.contains("финальн")
+                ||low.contains("игра нач")||low.contains("game start")||low.contains("защитите свою кровать");
+        if(matchEvent)chatMatchEvidenceUntilMs=System.currentTimeMillis()+15000L;
+        if(low.contains("возвращение в лобби")||low.contains("waiting for players")||low.contains("ожидание игроков"))chatMatchEvidenceUntilMs=0L;
     }
 
     private void checkBaseAlert(Scoreboard b){
@@ -87,10 +99,11 @@ public final class BedWarsHelper {
             ScorePlayerTeam theirTeam=b.getPlayersTeam(p.getName());
             // Only skip when both are confirmed on the SAME team - if team data isn't available
             // on this server (both null), fall back to just distance so the alert still works.
-            if(theirTeam!=null&&theirTeam==myTeam)continue;
+            if(sameTeam(myTeam,theirTeam)||sameNameColor(mc.thePlayer,p))continue;
             double dx=p.posX-basePos.xCoord,dy=p.posY-basePos.yCoord,dz=p.posZ-basePos.zCoord;
             if(Math.sqrt(dx*dx+dy*dy+dz*dz)<=QModsTools.config.baseAlertRadius){
-                lastBaseAlertMs=now;mc.thePlayer.sendChatMessage(QModsTools.config.baseAlertPrefix+QModsTools.config.baseAlertMessage);return;
+                lastBaseAlertMs=now;baseThreatUntilMs=now+4500L;baseThreatName=p.getDisplayName().getFormattedText();
+                mc.thePlayer.playSound("random.orb",0.8F,0.65F);return;
             }
         }
     }
@@ -118,6 +131,10 @@ public final class BedWarsHelper {
             DrawUtil.rounded(bx,gy,bx+41,gy+17,4,low?0xCC5A1620:0xAD171A22);
             mc.fontRendererObj.drawString(labelList.get(i)+" "+(low?"§c":"§f")+amount,bx+6,gy+5,0xFFFFFFFF,true);}
         if(alertUntil>tick){String warn="§c§lКРОВАТЬ СЛОМАНА §8• §fвозрождения больше нет";int ww=mc.fontRendererObj.getStringWidth(warn)+20,wx=sr.getScaledWidth()/2-ww/2,wy=55;DrawUtil.shadow(wx,wy,wx+ww,wy+24,5);DrawUtil.rounded(wx,wy,wx+ww,wy+24,5,0xD8240D14);DrawUtil.rect(wx,wy,wx+ww,wy+3,0xFFFF3F62);mc.fontRendererObj.drawString(warn,wx+10,wy+8,0xFFFFFFFF,true);}
+        if(baseThreatUntilMs>System.currentTimeMillis()){
+            String warn="§c§lВРАГ У БАЗЫ §8• §f"+baseThreatName;int ww=mc.fontRendererObj.getStringWidth(warn)+20,wx=sr.getScaledWidth()/2-ww/2,wy=alertUntil>tick?83:55;
+            DrawUtil.shadow(wx,wy,wx+ww,wy+24,5);DrawUtil.rounded(wx,wy,wx+ww,wy+24,5,0xDF240D14);DrawUtil.gradient(wx,wy,wx+ww,wy+3,0xFFFF355D,0xFFFFA34D);mc.fontRendererObj.drawString(warn,wx+10,wy+8,0xFFFFFFFF,true);
+        }
         if(rejoinPending){long left=Math.max(0,rejoinAtMs-System.currentTimeMillis());String text="§dQMods §8• §f/rejoin через §d"+String.format("%.1f",left/1000D)+"с";int w=mc.fontRendererObj.getStringWidth(text)+16,rx=sr.getScaledWidth()/2-w/2,ry=55;DrawUtil.rounded(rx,ry,rx+w,ry+19,5,0xD012151D);mc.fontRendererObj.drawString(text,rx+8,ry+6,0xFFFFFFFF,true);}
     }
 
@@ -146,6 +163,18 @@ public final class BedWarsHelper {
         if(mc==null||mc.theWorld==null||mc.thePlayer==null)return false;String ip=mc.getCurrentServerData()==null?"":mc.getCurrentServerData().serverIP.toLowerCase(Locale.ROOT);ScoreObjective o=objective(mc.theWorld.getScoreboard(),mc);String title=o==null?"":EnumChatFormatting.getTextWithoutFormattingCodes(o.getDisplayName());return (ip.contains("mineblaze")&&(title!=null&&title.toLowerCase(Locale.ROOT).contains("bedwars")))||(title!=null&&title.toLowerCase(Locale.ROOT).contains("bedwars")&&containsMineBlaze(mc.theWorld.getScoreboard(),o));
     }
     private static boolean containsMineBlaze(Scoreboard b,ScoreObjective o){if(o==null)return false;for(Score s:b.getSortedScores(o)){String line=EnumChatFormatting.getTextWithoutFormattingCodes(s.getPlayerName());if(line!=null&&line.toLowerCase(Locale.ROOT).contains("mineblaze"))return true;}return false;}
+    private static boolean isMatchScoreLine(String low){return low.contains("сломано")&&low.contains("кроват")||low.contains("финальн")&&low.contains("убий")||low.contains("kills:")||low.contains("beds broken");}
+    private static String normalize(String s){String clean=EnumChatFormatting.getTextWithoutFormattingCodes(s);return clean==null?"":clean.replace('\u00A0',' ').replace('ё','е').trim().toLowerCase(Locale.ROOT);}
+    private static boolean sameTeam(ScorePlayerTeam a,ScorePlayerTeam b){return a!=null&&b!=null&&(a==b||a.getRegisteredName().equals(b.getRegisteredName()));}
+    private static boolean sameNameColor(EntityPlayer a,EntityPlayer b){
+        String aa=a.getDisplayName().getFormattedText(),bb=b.getDisplayName().getFormattedText();
+        int ca=firstColor(aa),cb=firstColor(bb);return ca>=0&&ca==cb;
+    }
+    private static int firstColor(String s){
+        if(s==null)return -1;for(int i=0;i+1<s.length();i++)if(s.charAt(i)=='§'){
+            int c="0123456789abcdef".indexOf(Character.toLowerCase(s.charAt(i+1)));if(c>=0)return c;
+        }return -1;
+    }
     private static ScoreObjective objective(Scoreboard b,Minecraft mc){ScorePlayerTeam t=b.getPlayersTeam(mc.thePlayer.getName());if(t!=null&&t.getChatFormat().getColorIndex()>=0){ScoreObjective o=b.getObjectiveInDisplaySlot(3+t.getChatFormat().getColorIndex());if(o!=null)return o;}return b.getObjectiveInDisplaySlot(1);}
     private boolean isShop(GuiChest gui){String n=((ContainerChest)gui.inventorySlots).getLowerChestInventory().getDisplayName().getUnformattedText();return n!=null&&n.toLowerCase(Locale.ROOT).contains("магазин");}
     private boolean isMineBlazeServer(){return mc.getCurrentServerData()!=null&&mc.getCurrentServerData().serverIP.toLowerCase(Locale.ROOT).contains("mineblaze");}

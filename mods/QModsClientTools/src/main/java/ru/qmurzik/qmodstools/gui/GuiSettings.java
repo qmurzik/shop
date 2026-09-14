@@ -29,7 +29,8 @@ public final class GuiSettings extends GuiScreen {
     private final List<GuiTextField> bindFields=new ArrayList<GuiTextField>();
     private GuiTextField ggTextField,baseAlertPrefixField,baseAlertMessageField;
 
-    public GuiSettings(GuiScreen parent){this.parent=parent;}
+    public GuiSettings(GuiScreen parent){this(parent,0);}
+    public GuiSettings(GuiScreen parent,int startTab){this.parent=parent;this.tab=Math.max(0,Math.min(8,startTab));}
 
     @Override public void initGui(){
         Keyboard.enableRepeatEvents(true);

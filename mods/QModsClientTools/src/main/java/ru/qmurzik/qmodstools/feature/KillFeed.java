@@ -14,18 +14,20 @@ import java.util.Locale;
 
 /** Compact kill feed for MineBlaze BedWars: reuses the server's own death-broadcast chat lines instead of trying to re-parse who/whom/weapon. */
 public final class KillFeed {
-    private static final String[] KEYWORDS = {"убил", "зарезал", "застрелил", "взорвал", "сжёг", "утонул", "убит",
-            "killed", "slain", "shot", "blew up", "burned", "drowned", "fell"};
+    private static final String[] KEYWORDS = {"убил", "убила", "убит", "убита", "зарезал", "застрелил", "взорвал",
+            "сжег", "сгорел", "утонул", "погиб", "разбился", "сбросил", "скинул", "столкнул", "бездна",
+            "убийство", "killed", "slain", "shot", "blew up", "burned", "drowned", "fell", "void", "eliminated", "final kill"};
     private final Minecraft mc;
     private final List<Entry> entries = new ArrayList<Entry>();
 
     public KillFeed(Minecraft mc) { this.mc = mc; }
 
     public void onChat(ClientChatReceivedEvent e) {
-        if (!QModsTools.config.killFeed || mc.thePlayer == null || mc.theWorld == null || e.type != 0 || !BedWarsHelper.isMatchInProgress(mc)) return;
+        if (!QModsTools.config.killFeed || mc.thePlayer == null || mc.theWorld == null || e.type == 2 || !BedWarsHelper.isMatchInProgress(mc)) return;
         String clean = EnumChatFormatting.getTextWithoutFormattingCodes(e.message.getUnformattedText());
         if (clean == null) return;
-        String low = clean.toLowerCase(Locale.ROOT);
+        String low = clean.toLowerCase(Locale.ROOT).replace('ё','е');
+        if(low.contains("кроват")||low.contains("bed destroyed"))return;
         for (String kw : KEYWORDS) if (low.contains(kw)) { add(e.message.getFormattedText()); return; }
     }
 

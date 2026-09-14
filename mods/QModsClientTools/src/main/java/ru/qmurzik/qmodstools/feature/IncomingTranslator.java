@@ -14,10 +14,10 @@ public final class IncomingTranslator {
     public IncomingTranslator(Minecraft mc) { this.mc = mc; }
 
     public void onChat(ClientChatReceivedEvent e) {
-        if (!QModsTools.config.translateIncoming || mc.thePlayer == null || e.type != 0) return;
+        if (!QModsTools.config.translateIncoming || mc.thePlayer == null || e.type == 2) return;
         String clean = EnumChatFormatting.getTextWithoutFormattingCodes(e.message.getUnformattedText());
         if (clean == null) return;
-        String stripped = clean.trim();
+        String stripped = messageBody(clean.trim());
         if (stripped.isEmpty() || stripped.length() > 200) return;
         if (stripped.startsWith("↳")) return;
         if (hasCyrillic(stripped) || !hasLetter(stripped)) return;
@@ -35,4 +35,9 @@ public final class IncomingTranslator {
 
     private static boolean hasCyrillic(String s) { for (int i = 0; i < s.length(); i++) { char c = s.charAt(i); if (c >= 0x0400 && c <= 0x04FF) return true; } return false; }
     private static boolean hasLetter(String s) { for (int i = 0; i < s.length(); i++) if (Character.isLetter(s.charAt(i))) return true; return false; }
+    private static String messageBody(String s) {
+        int colon=s.indexOf(':');
+        if(colon>0&&colon+1<s.length()&&colon<48)return s.substring(colon+1).trim();
+        return s;
+    }
 }

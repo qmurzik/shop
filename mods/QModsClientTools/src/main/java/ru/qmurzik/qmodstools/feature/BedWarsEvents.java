@@ -25,12 +25,13 @@ public final class BedWarsEvents {
     public BedWarsEvents(Minecraft mc) { this.mc = mc; }
 
     public void onChat(ClientChatReceivedEvent e) {
-        if (mc.thePlayer == null || mc.theWorld == null || e.type != 0 || !BedWarsHelper.isMatchInProgress(mc)) return;
+        if (mc.thePlayer == null || mc.theWorld == null || e.type == 2 || !BedWarsHelper.isMatchInProgress(mc)) return;
         String clean = EnumChatFormatting.getTextWithoutFormattingCodes(e.message.getUnformattedText());
         if (clean == null || clean.trim().isEmpty()) return;
-        String low = clean.toLowerCase(Locale.ROOT);
-        boolean finalKill = low.contains("final kill") || (low.contains("финальн") && (low.contains("уби") || low.contains("удар")));
-        boolean bedBroken = !finalKill && low.contains("кроват") && (low.contains("уничтож") || low.contains("разруш") || low.contains("сломан"));
+        String low = clean.toLowerCase(Locale.ROOT).replace('ё','е');
+        boolean finalKill = low.contains("final kill") || low.contains("финальн") && (low.contains("уби") || low.contains("кил") || low.contains("смерт"));
+        boolean bedBroken = !finalKill && (low.contains("кроват")||low.contains("bed"))
+                && (low.contains("уничтож") || low.contains("разруш") || low.contains("сломан") || low.contains("destroy"));
         boolean gameEnd = low.contains("wins the game") || low.contains("game over") || low.contains("игра завершена")
                 || low.contains("игра окончена") || low.contains("победила команда") || low.contains("выиграла команда");
         if (finalKill && QModsTools.config.finalKillBanner) { show(e.message.getFormattedText(), "§lФИНАЛЬНОЕ УБИЙСТВО", 0xFF5577, true); spawnSparks(0xFF5577, 26); }
@@ -68,7 +69,7 @@ public final class BedWarsEvents {
         float in = Math.min(1F, (now - bannerStart) / 220F), out = Math.min(1F, (bannerUntil - now) / 260F);
         float scale = (bannerBig ? 1.35F : 1.05F) * (0.85F + 0.15F * in);
         int alpha = (int) (255 * Math.min(in, out));
-        ScaledResolution sr = new ScaledResolution(mc); int cx = sr.getScaledWidth() / 2, cy = sr.getScaledHeight() / 3;
+        ScaledResolution sr = new ScaledResolution(mc); int cx = sr.getScaledWidth() / 2, cy = sr.getScaledHeight() / 4;
         DrawUtil.beginHudScale(scale, cx, cy);
         int w = mc.fontRendererObj.getStringWidth(bannerText), hw = mc.fontRendererObj.getStringWidth(bannerHeader);
         int boxW = Math.max(w, hw) + 28, boxX = -boxW / 2, boxY = -20;
@@ -95,7 +96,7 @@ public final class BedWarsEvents {
     private final class Spark {
         final float x, y, vx, vy; final int color; final long start = System.currentTimeMillis();
         Spark(int color) {
-            this.color = color; x = 0.5F; y = 0.35F;
+            this.color = color; x = 0.5F; y = 0.25F;
             float ang = (float) (rng.nextDouble() * Math.PI * 2); float speed = 0.12F + (float) rng.nextDouble() * 0.28F;
             vx = (float) Math.cos(ang) * speed; vy = (float) Math.sin(ang) * speed - 0.12F;
         }
