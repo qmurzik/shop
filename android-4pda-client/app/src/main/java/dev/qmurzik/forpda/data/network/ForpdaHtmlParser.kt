@@ -6,27 +6,28 @@ import dev.qmurzik.forpda.domain.model.Topic
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import javax.inject.Inject
 
 /**
- * Fetches and parses server-rendered forum pages with Jsoup, since there is no
- * official 4pda API to call instead. CSS selectors below are placeholders — they
- * need to be filled in against the live markup before this becomes the real
- * [dev.qmurzik.forpda.data.repository.ForumRepository] implementation, and kept in
- * one place so future markup changes only touch this file.
+ * Fetches and parses server-rendered IP.Board pages with Jsoup — 4pda has no
+ * official API, so every open-source unofficial client (RadiationX/ForPDA,
+ * slartus/4pdaClient-plus) works this way too. URL construction lives in
+ * [ForpdaUrls]; the CSS selectors below are still placeholders since IPB themes
+ * are customized per-install and need to be checked against 4pda's live markup —
+ * kept in one file so a markup change only touches this class.
  */
 class ForpdaHtmlParser @Inject constructor(
     private val httpClient: OkHttpClient,
 ) {
-    private fun fetchDocument(url: String) = httpClient.newCall(Request.Builder().url(url).build())
-        .execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            Jsoup.parse(body, url)
+    private fun fetchDocument(url: String): Document =
+        httpClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+            Jsoup.parse(response.body?.string().orEmpty(), url)
         }
 
-    fun parseForumTree(url: String): List<Forum> {
-        val doc = fetchDocument(url)
-        // TODO: replace with real selectors, e.g. doc.select(".forumrow")
+    fun parseForumTree(host: String = ForpdaUrls.primaryHost): List<Forum> {
+        val doc = fetchDocument(ForpdaUrls.forumIndex(host))
+        // TODO: verify against live IPB markup, e.g. doc.select("#forum-list .forumrow")
         return doc.select(".forumrow").map { row ->
             Forum(
                 id = row.attr("data-forum-id"),
@@ -36,12 +37,12 @@ class ForpdaHtmlParser @Inject constructor(
         }
     }
 
-    fun parseTopics(forumUrl: String): List<Topic> {
-        val doc = fetchDocument(forumUrl)
+    fun parseTopics(forumId: String, page: Int = 1, host: String = ForpdaUrls.primaryHost): List<Topic> {
+        val doc = fetchDocument(ForpdaUrls.showForum(forumId, page, host))
         return doc.select(".topicrow").map { row ->
             Topic(
                 id = row.attr("data-topic-id"),
-                forumId = row.attr("data-forum-id"),
+                forumId = forumId,
                 title = row.select(".topic-title").text(),
                 authorName = row.select(".topic-author").text(),
                 repliesCount = row.select(".replies-count").text().filter { it.isDigit() }.toIntOrNull() ?: 0,
@@ -50,15 +51,29 @@ class ForpdaHtmlParser @Inject constructor(
         }
     }
 
-    fun parsePosts(topicUrl: String): List<Post> {
-        val doc = fetchDocument(topicUrl)
+    fun parsePosts(topicId: String, page: Int = 1, host: String = ForpdaUrls.primaryHost): List<Post> {
+        val doc = fetchDocument(ForpdaUrls.showTopic(topicId, page, host))
         return doc.select(".postrow").map { row ->
             Post(
                 id = row.attr("data-post-id"),
-                topicId = row.attr("data-topic-id"),
+                topicId = topicId,
                 authorName = row.select(".post-author").text(),
                 dateLabel = row.select(".post-date").text(),
                 htmlBody = row.select(".post-body").html(),
+            )
+        }
+    }
+
+    fun parseSearch(query: String, host: String = ForpdaUrls.primaryHost): List<Topic> {
+        val doc = fetchDocument(ForpdaUrls.search(query, host))
+        return doc.select(".topicrow").map { row ->
+            Topic(
+                id = row.attr("data-topic-id"),
+                forumId = row.attr("data-forum-id"),
+                title = row.select(".topic-title").text(),
+                authorName = row.select(".topic-author").text(),
+                repliesCount = row.select(".replies-count").text().filter { it.isDigit() }.toIntOrNull() ?: 0,
+                viewsCount = row.select(".views-count").text().filter { it.isDigit() }.toIntOrNull() ?: 0,
             )
         }
     }

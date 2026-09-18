@@ -4,6 +4,30 @@
 современном стеке (Kotlin + Jetpack Compose + Material 3) и с рядом улучшений
 UX, которых нет в оригинале.
 
+## Изученные open-source аналоги
+
+Прежде чем писать сетевой слой, посмотрел на два актуальных неофициальных
+клиента 4pda:
+
+- [RadiationX/ForPDA](https://github.com/RadiationX/ForPDA) — Java, рендер
+  через WebView + внедрённый JS, лицензия GPLv3.
+- [slartus/4pdaClient-plus](https://github.com/slartus/4pdaClient-plus) —
+  Kotlin, Jsoup + OkHttp + Coroutines + Hilt, модульная архитектура
+  (forum/qms/topic/user-profile), лицензия Apache-2.0. Архитектурно ближе
+  всего к тому, что заложено в этом проекте.
+
+Оба подтверждают главное: официального API нет, оба ходят напрямую в HTML.
+Из `4pdaClient-plus` (файл `ProfileApi.java`) видно, что форум работает на
+движке **IP.Board**, с классической для него схемой URL на одном
+`index.php` — `act=auth`, `act=Login&CODE=...`, `showuser=`, зеркала
+`4pda.to`/`4pda.ru`. Это не заимствование их кода, а протокольная специфика
+самого форумного движка — она вынесена в
+[`ForpdaUrls`](app/src/main/java/dev/qmurzik/forpda/data/network/ForpdaUrls.kt)
+(`showforum=`, `showtopic=`, `showuser=`, `act=Search`, `act=Login`), которым
+теперь пользуется `ForpdaHtmlParser`. CSS-селекторы внутри парсера всё ещё
+заглушки — тема IPB кастомизирована под 4pda и её нужно сверять с живой
+вёрсткой.
+
 ## Важное техническое ограничение
 
 У 4pda **нет официального публичного API**. Единственные источники данных —
