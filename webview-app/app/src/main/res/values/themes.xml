@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.MaxWebView" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/statusBar</item>
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+</resources>
